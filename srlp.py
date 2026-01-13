@@ -64,10 +64,6 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 # -----------------------------
 loss_buffer = deque(maxlen=20)
 
-LOSS_STD_THRESHOLD = 0.05
-PRESSURE_LOW = 0.5
-PRESSURE_NORMAL = 1.0
-
 # -----------------------------
 # SRLP logging (for visualization)
 # -----------------------------
@@ -100,12 +96,13 @@ for epoch in range(epochs):
         if len(loss_buffer) == loss_buffer.maxlen:
             loss_std = torch.std(torch.tensor(list(loss_buffer))).item()
 
-            # Smooth SRLP v1 pressure
-            k = 10.0
+            # Smooth SRLP v1.1 pressure (tuned)
+            k = 5.0  # less aggressive suppression
             pressure = 1.0 / (1.0 + k * loss_std)
 
-            # Clamp pressure range
-            pressure = max(0.5, min(1.0, pressure))
+            # Allow stronger learning in stable phase
+            pressure = max(0.6, min(1.0, pressure))
+
         else:
             pressure = 1.0
 
