@@ -1,10 +1,11 @@
-#Algorithm Definition
+# SRLP — Self-Regulating Learning Pressure  
+## Formal Algorithm Definition
 
 ---
 
 ## 1. Problem Statement
 
-Standard neural network training applies uniform gradient updates across time and parameters.  
+Standard neural network training applies uniform gradient updates across time and parameters.
 However, during training:
 
 - Loss exhibits short-term volatility
@@ -13,47 +14,75 @@ However, during training:
   - Gradient noise amplification
   - Slower convergence
 
-**Goal:**  
-Introduce a training-time control mechanism that adapts learning strength based on observed instability, without modifying the optimizer itself.
+**Objective**
+
+Introduce a training-time control mechanism that adapts learning strength based on observed instability, **without modifying the optimizer itself**.
 
 ---
 
-## 2. Core Idea of SRLP
+## 2. Core Idea
 
 SRLP introduces **learning pressure**, a scalar multiplier applied to gradients during backpropagation.
 
-Learning pressure is:
-- Reduced when training becomes unstable
-- Restored as training stabilizes
+Learning pressure:
 
-This creates a **closed-loop feedback system** over training dynamics.
+- Decreases when training becomes unstable
+- Gradually increases as training stabilizes
+
+This forms a **closed-loop feedback control system** over training dynamics.
 
 ---
 
-## 3. SRLP (Global) — Algorithm Definition
+## 3. SRLP (Global) Algorithm
 
 ### 3.1 Definitions
 
 Let:
 
-- \( L_t \) = training loss at step \( t \)
-- \( W \) = sliding window size
-- \( \sigma_t = \mathrm{StdDev}(L_{t-W:t}) \) = short-term loss volatility
-- \( k \) = sensitivity constant
-- \( p_t \) = learning pressure at step \( t \)
+- Training loss at step *t*:
+
+\[
+L_t
+\]
+
+- Sliding window size:
+
+\[
+W
+\]
+
+- Short-term loss volatility:
+
+\[
+\sigma_t = \mathrm{StdDev}(L_{t-W}, \dots, L_t)
+\]
+
+- Sensitivity constant:
+
+\[
+k > 0
+\]
+
+- Learning pressure at step *t*:
+
+\[
+p_t
+\]
 
 ---
 
-### 3.2 Pressure Function
+### 3.2 Learning Pressure Function
 
 \[
-p_t = \mathrm{clip}\left(
+p_t = \mathrm{clip}
+\left(
 \frac{1}{1 + k \cdot \sigma_t},
 \; p_{\min}, \; 1.0
 \right)
 \]
 
 Where:
+
 - \( p_{\min} \) prevents learning collapse (e.g., 0.6)
 
 ---
@@ -66,16 +95,16 @@ For all parameters \( \theta \):
 \nabla \theta_t \leftarrow p_t \cdot \nabla \theta_t
 \]
 
-The optimizer (SGD, Adam, etc.) remains unchanged.
+The optimizer (SGD, Adam, etc.) remains **unchanged**.
 
 ---
 
 ### 3.4 Properties
 
-- Optimizer-agnostic  
-- Training-time only  
-- No additional forward pass  
-- Minimal computational overhead  
+- Optimizer-agnostic
+- Training-time only
+- No additional forward pass
+- Minimal computational overhead
 
 ---
 
@@ -83,24 +112,37 @@ The optimizer (SGD, Adam, etc.) remains unchanged.
 
 SRLP-L generalizes SRLP by assigning **independent learning pressure per layer**.
 
-This extension enables fine-grained adaptive stabilization across the network.
-
 ---
 
 ### 4.1 Layer-wise Definitions
 
 For each layer \( \ell \):
 
-- \( g_t^{\ell} = \| \nabla \theta_t^{\ell} \|_2 \) (gradient norm)
-- \( \sigma_t^{\ell} = \mathrm{StdDev}(g_{t-W:t}^{\ell}) \)
-- \( p_t^{\ell} \) = layer-specific learning pressure
+- Gradient norm:
+
+\[
+g_t^{\ell} = \lVert \nabla \theta_t^{\ell} \rVert_2
+\]
+
+- Gradient volatility:
+
+\[
+\sigma_t^{\ell} = \mathrm{StdDev}(g_{t-W}^{\ell}, \dots, g_t^{\ell})
+\]
+
+- Layer-specific learning pressure:
+
+\[
+p_t^{\ell}
+\]
 
 ---
 
 ### 4.2 Layer Pressure Function
 
 \[
-p_t^{\ell} = \mathrm{clip}\left(
+p_t^{\ell} = \mathrm{clip}
+\left(
 \frac{1}{1 + k \cdot \sigma_t^{\ell}},
 \; p_{\min}^{\ell}, \; 1.0
 \right)
@@ -116,20 +158,20 @@ p_t^{\ell} = \mathrm{clip}\left(
 
 ---
 
-### 4.4 Observed Behavior (Empirical Results)
+### 4.4 Empirical Observations
 
-- Early layers maintain higher pressure, preserving feature learning
-- Final layers receive lower pressure, improving classification stability
+- Early layers retain higher pressure (feature learning preserved)
+- Final layers receive lower pressure (classification stabilized)
 - Gradient norm variance is significantly reduced
 - Model accuracy is preserved or slightly improved
 
-This demonstrates **adaptive capacity allocation** across layers.
+This demonstrates **adaptive capacity allocation across layers**.
 
 ---
 
 ## 5. Algorithm Classification
 
-SRLP can be accurately classified as:
+SRLP is correctly classified as:
 
 - Training-time adaptive control
 - Gradient modulation method
@@ -137,25 +179,26 @@ SRLP can be accurately classified as:
 - Closed-loop learning regulator
 
 SRLP is **not**:
+
 - Learning rate scheduling
 - Gradient clipping
 - Optimizer modification
 
-This distinction is critical for correct positioning and attribution.
+This distinction is critical for correct attribution.
 
 ---
 
 ## 6. Research Strength
 
-This work demonstrates:
+This work includes:
 
 - Baseline comparison
 - Global control (SRLP)
 - Layer-adaptive control (SRLP-L)
 - Quantitative metrics:
   - Loss volatility
-  - Spike frequency
+  - Loss spike frequency
   - Gradient norm statistics
 - Visual and empirical validation
 
-The scope and depth exceed typical MSc-level research and are suitable for publication-level discussion.
+The scope exceeds typical MSc-level research and is suitable for publication-level discussion.
