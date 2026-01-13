@@ -2,99 +2,37 @@
 
 SRLP (Self-Regulating Learning Pressure) is a training-time control algorithm that
 dynamically adjusts gradient update strength based on short-term loss volatility
-to stabilize neural network learning without sacrificing performance.
+to stabilize neural network training **without modifying the optimizer**.
 
 ---
 
 ## Motivation
 
 Most neural network training pipelines rely on fixed learning dynamics determined
-by static optimizers and learning rates. However, training instability often varies
-across time, especially during early or noisy phases.
+by static optimizers and learning rates. However, training instability varies
+significantly across time and layers.
 
-SRLP introduces a **feedback-driven learning control mechanism** that adapts
-gradient pressure in response to observed loss volatility, enabling safer and
-more interpretable training behavior.
-
----
-
-## Algorithm Overview
-
-SRLP operates during training and performs the following steps:
-
-- Monitors short-term loss volatility using a sliding window
-- Computes a continuous learning pressure signal based on volatility
-- Reduces gradient magnitude during unstable phases
-- Gradually restores full learning pressure as training stabilizes
-
-The algorithm is **model-agnostic**, **optimizer-independent**, and requires
-no modification to the network architecture.
+SRLP introduces a **feedback-driven control mechanism** that adapts learning
+pressure in response to observed training instability.
 
 ---
 
-## Current Version
+## Key Idea
 
-- **SRLP v1.1** — Continuous, tuned learning-pressure control  
-  - Smooth pressure adaptation  
-  - No hard thresholds  
-  - Preserves convergence and accuracy  
+- Monitor short-term loss volatility
+- Compute a continuous learning-pressure signal
+- Scale gradients during backpropagation
+- Restore full learning strength as training stabilizes
 
----
+SRLP operates entirely at **training time** and is:
 
-## Repository Structure
-
-```
-SRLP/
-├── srlp.py
-├── experiments/
-│   ├── baseline.py
-│   └── srlp_mnist.py
-├── data/
-├── README.md
-├── requirements.txt
-├── .gitignore
-```
-
-### File Descriptions
-
-- `srlp.py` — Core SRLP algorithm (learning-pressure controller)
-- `experiments/baseline.py` — Standard MNIST training without SRLP
-- `experiments/srlp_mnist.py` — MNIST training with SRLP enabled
+- Model-agnostic
+- Optimizer-independent
+- Computationally lightweight
 
 ---
 
-## Experiments
+## Algorithm Definition
 
-- Dataset: MNIST
-- Model: Simple MLP
-- Framework: PyTorch
-- Evaluation focus:
-  - Training stability
-  - Loss volatility
-  - Learning dynamics
-  - Final accuracy preservation
+A complete formal definition of SRLP and its per-layer extension (SRLP-L) is provided here:
 
----
-
-## Status
-
-This project is under **active research and development**.
-The current focus is on stability analysis, metric refinement, and
-engineering-grade algorithm design.
-
----
-
-## Future Work
-
-- Advanced stability metrics (loss spike count, gradient variance)
-- Optimizer-level integration
-- Per-layer and adaptive pressure control
-- CNN and Transformer experiments
-- Research paper and public release
-
----
-
-## Author
-
-Developed and maintained by **Nadeesha D Shalom**  
-Research focus: Learning dynamics, training stability, and AI control mechanisms.
