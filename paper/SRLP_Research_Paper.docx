@@ -1,0 +1,165 @@
+Title:
+Self-Regulating Learning Pressure: A Training-Time Gradient Stabilization Algorithm
+
+Author:
+Nadeesha D Shalom
+Independent Researcher
+Email: nadeeshashalom1@gmail.com
+GitHub: https://github.com/Nadeesha-D-Shalom/SRLP
+
+--------------------------------------------------
+
+Abstract
+
+Training instability caused by short-term loss volatility remains a persistent challenge
+in neural network optimization. Standard training pipelines apply uniform gradient
+updates regardless of transient instability, which can lead to gradient noise
+amplification, overshooting, and slower convergence.
+
+This paper introduces Self-Regulating Learning Pressure (SRLP), a training-time,
+optimizer-independent algorithm that dynamically modulates gradient magnitude based
+on observed loss volatility. SRLP introduces a closed-loop feedback mechanism that
+reduces learning pressure during unstable phases and gradually restores full learning
+capacity as training stabilizes.
+
+We further propose SRLP-L, a per-layer extension that assigns independent learning
+pressure to each layer based on gradient norm volatility. Experiments on the MNIST
+dataset using a multilayer perceptron demonstrate that SRLP and SRLP-L significantly
+reduce loss volatility and gradient variance while preserving or slightly improving
+classification accuracy.
+
+--------------------------------------------------
+
+Keywords
+
+Training stability, Gradient modulation, Optimization control, Neural networks,
+Learning dynamics, Adaptive training
+
+--------------------------------------------------
+
+1. Introduction
+
+Neural network training relies on gradient-based optimization methods such as
+stochastic gradient descent and its variants. While modern optimizers incorporate
+adaptive learning rates, they typically apply uniform gradient updates across time
+and parameters. In practice, training dynamics are highly non-stationary, especially
+during early or noisy phases, where loss values exhibit significant short-term
+volatility.
+
+Such volatility can amplify gradient noise, cause overshooting, and degrade training
+stability. Existing techniques such as learning-rate scheduling and gradient clipping
+address these issues indirectly but either require manual tuning or impose hard
+constraints that may limit learning capacity.
+
+This work introduces Self-Regulating Learning Pressure (SRLP), a training-time
+algorithm that adaptively scales gradients based on observed instability without
+modifying the optimizer or learning rate.
+
+--------------------------------------------------
+
+2. Related Work
+
+Training stabilization techniques include adaptive learning rate schedules,
+gradient clipping, and optimizer-level modifications. Learning rate scheduling adjusts
+step size globally but lacks responsiveness to short-term instability. Gradient
+clipping enforces hard bounds on gradients, which may suppress informative updates.
+
+Recent research has explored gradient normalization and trust-region methods;
+however, these approaches often introduce optimizer-specific changes.
+
+SRLP differs fundamentally by acting as a lightweight, optimizer-agnostic control
+mechanism that modulates gradients continuously based on training feedback.
+
+--------------------------------------------------
+
+3. Methodology
+
+3.1 Problem Definition
+
+Let L_t denote the training loss at step t. Short-term instability is characterized by
+loss volatility over a sliding window of size W.
+
+3.2 SRLP (Global)
+
+Loss volatility is computed as:
+
+σ_t = StdDev(L_{t-W}, ..., L_t)
+
+Learning pressure p_t is defined as:
+
+p_t = clip( 1 / (1 + k · σ_t), p_min, 1.0 )
+
+where k controls sensitivity and p_min prevents learning collapse.
+
+Gradient update:
+
+∇θ_t ← p_t · ∇θ_t
+
+The optimizer remains unchanged.
+
+3.3 SRLP-L (Per-Layer)
+
+For each layer ℓ, gradient norm is computed:
+
+g_t^ℓ = || ∇θ_t^ℓ ||_2
+
+Layer-wise volatility:
+
+σ_t^ℓ = StdDev(g_{t-W}^ℓ, ..., g_t^ℓ)
+
+Layer pressure:
+
+p_t^ℓ = clip( 1 / (1 + k · σ_t^ℓ), p_min^ℓ, 1.0 )
+
+Layer gradient update:
+
+∇θ_t^ℓ ← p_t^ℓ · ∇θ_t^ℓ
+
+--------------------------------------------------
+
+4. Experimental Setup
+
+Dataset: MNIST
+Model: Multilayer Perceptron
+Optimizer: Adam
+Metrics:
+- Loss volatility
+- Loss spike count
+- Gradient norm statistics
+- Test accuracy
+
+Baseline training is compared against SRLP and SRLP-L under identical conditions.
+
+--------------------------------------------------
+
+5. Results
+
+SRLP reduces late-stage loss volatility and spike frequency compared to baseline.
+SRLP-L further reduces gradient norm variance, particularly in deeper layers.
+
+Accuracy is preserved or marginally improved across all experiments, demonstrating
+that stability gains do not compromise performance.
+
+--------------------------------------------------
+
+6. Discussion
+
+Results indicate that SRLP functions as a closed-loop training regulator that adapts
+learning capacity in response to instability. The per-layer extension reveals
+adaptive capacity allocation, where early layers maintain higher pressure and later
+layers are stabilized more aggressively.
+
+--------------------------------------------------
+
+7. Conclusion
+
+This paper presents SRLP, a simple yet effective training-time algorithm for
+stabilizing neural network learning. SRLP is optimizer-independent, lightweight,
+and requires no architectural changes. Future work will explore applications to
+convolutional and transformer-based architectures.
+
+--------------------------------------------------
+
+References
+
+[Add later based on target journal]
