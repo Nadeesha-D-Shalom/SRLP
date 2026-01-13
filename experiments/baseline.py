@@ -61,6 +61,13 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 
 batch_losses = []
+gradient_norms = []
+
+
+spike_count = 0
+SPIKE_WINDOW = 10
+SPIKE_THRESHOLD = 0.10  # adjust later if needed
+
 
 # -----------------------------
 # 5. Training loop
@@ -78,8 +85,24 @@ for epoch in range(epochs):
         optimizer.zero_grad()
         outputs = model(images)
         loss = criterion(outputs, labels)
+        if len(batch_losses) >= SPIKE_WINDOW:
+            recent_mean = np.mean(batch_losses[-SPIKE_WINDOW:])
+            if loss.item() > recent_mean + SPIKE_THRESHOLD:
+                spike_count += 1
+
         batch_losses.append(loss.item())
         loss.backward()
+        # -------- Gradient Norm Measurement --------
+        total_norm = 0.0
+        for param in model.parameters():
+            if param.grad is not None:
+                param_norm = param.grad.data.norm(2)
+                total_norm += param_norm.item() ** 2
+
+        total_norm = total_norm ** 0.5
+        gradient_norms.append(total_norm)
+        # ------------------------------------------
+
         optimizer.step()
 
         total_loss += loss.item()
@@ -97,7 +120,8 @@ for epoch in range(epochs):
     late_losses = batch_losses[start_idx:]
     late_std = np.std(late_losses)
 
-    print(f"Late-stage Loss Std (Volatility): {late_std:.6f}\n")
+    print(f"Late-stage Loss Std (Volatility): {late_std:.6f}")
+    print(f"Loss Spike Count: {spike_count}\n")
 
 # -----------------------------
 # 6. Simple evaluation
@@ -119,3 +143,6 @@ with torch.no_grad():
 
 accuracy = 100.0 * correct / total
 print(f"Test Accuracy: {accuracy:.2f}%\n")
+
+print(f"Gradient Norm Std: {np.std(gradient_norms):.6f}")
+print(f"Gradient Norm Mean: {np.mean(gradient_norms):.6f}\n")
