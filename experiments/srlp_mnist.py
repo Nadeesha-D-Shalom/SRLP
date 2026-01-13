@@ -5,6 +5,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from collections import deque
 import numpy as np
+import matplotlib.pyplot as plt
 
 # -----------------------------
 # 1. Basic setup
@@ -54,29 +55,35 @@ class SimpleMLP(nn.Module):
 model = SimpleMLP().to(device)
 
 # -----------------------------
+# Per-layer gradient buffers (STEP A1)
+# -----------------------------
+layer_gradient_buffers = {
+    name: deque(maxlen=20)
+    for name, _ in model.named_parameters()
+}
+
+# -----------------------------
 # 4. Loss and optimizer
 # -----------------------------
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # -----------------------------
-# 5. SRLP v0 setup
+# 5. SRLP setup (global)
 # -----------------------------
 loss_buffer = deque(maxlen=20)
 
 # -----------------------------
-# SRLP logging (for visualization)
+# Logging
 # -----------------------------
 pressure_history = []
 loss_history = []
 batch_losses = []
 gradient_norms = []
 
-
 spike_count = 0
 SPIKE_WINDOW = 10
-SPIKE_THRESHOLD = 0.10  # adjust later if needed
-
+SPIKE_THRESHOLD = 0.10
 
 # -----------------------------
 # 6. Training loop
@@ -94,6 +101,8 @@ for epoch in range(epochs):
         optimizer.zero_grad()
         outputs = model(images)
         loss = criterion(outputs, labels)
+
+        # Loss spike detection
         if len(batch_losses) >= SPIKE_WINDOW:
             recent_mean = np.mean(batch_losses[-SPIKE_WINDOW:])
             if loss.item() > recent_mean + SPIKE_THRESHOLD:
@@ -101,7 +110,16 @@ for epoch in range(epochs):
 
         batch_losses.append(loss.item())
         loss.backward()
-        # -------- Gradient Norm Measurement --------
+
+        # -------- Per-layer gradient norm tracking (STEP A1) --------
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                layer_gradient_buffers[name].append(
+                    param.grad.data.norm(2).item()
+                )
+        # ------------------------------------------------------------
+
+        # -------- Global gradient norm tracking --------
         total_norm = 0.0
         for param in model.parameters():
             if param.grad is not None:
@@ -110,34 +128,28 @@ for epoch in range(epochs):
 
         total_norm = total_norm ** 0.5
         gradient_norms.append(total_norm)
-        # ------------------------------------------
+        # ------------------------------------------------
 
-        # -------- SRLP v0 logic --------
+        # -------- SRLP global pressure --------
         loss_buffer.append(loss.item())
 
         if len(loss_buffer) == loss_buffer.maxlen:
             loss_std = torch.std(torch.tensor(list(loss_buffer))).item()
-
-            # Smooth SRLP v1.1 pressure (tuned)
-            k = 5.0  # less aggressive suppression
+            k = 5.0
             pressure = 1.0 / (1.0 + k * loss_std)
-
-            # Allow stronger learning in stable phase
             pressure = max(0.6, min(1.0, pressure))
-
         else:
             pressure = 1.0
 
         for param in model.parameters():
             if param.grad is not None:
                 param.grad.mul_(pressure)
-        # --------------------------------
+        # -------------------------------------
 
         pressure_history.append(pressure)
         loss_history.append(loss.item())
 
         optimizer.step()
-
         total_loss += loss.item()
 
     avg_loss = total_loss / len(train_loader)
@@ -147,15 +159,17 @@ for epoch in range(epochs):
     loss_std_overall = np.std(batch_losses)
     print(f"Training Loss Std (Volatility): {loss_std_overall:.6f}")
 
-    # Late-stage volatility: ignore early training noise
-    WARMUP_RATIO = 0.50  # ignore first 50% of batches
-    start_idx = int(len(batch_losses) * WARMUP_RATIO)
-
-    late_losses = batch_losses[start_idx:]
-    late_std = np.std(late_losses)
-
+    start_idx = int(len(batch_losses) * 0.50)
+    late_std = np.std(batch_losses[start_idx:])
     print(f"Late-stage Loss Std (Volatility): {late_std:.6f}")
-    print(f"Loss Spike Count: {spike_count}\n")
+    print(f"Loss Spike Count: {spike_count}")
+
+    # Debug: per-layer gradient volatility (STEP A1 verification)
+    for name in list(layer_gradient_buffers.keys())[:3]:
+        buf = list(layer_gradient_buffers[name])
+        if len(buf) > 1:
+            print(f"Layer {name} grad-norm std: {np.std(buf):.6f}")
+    print()
 
 # -----------------------------
 # 7. Evaluation
@@ -168,19 +182,20 @@ with torch.no_grad():
     for images, labels in test_loader:
         images = images.to(device)
         labels = labels.to(device)
-
         outputs = model(images)
         predictions = outputs.argmax(dim=1)
-
         total += labels.size(0)
         correct += (predictions == labels).sum().item()
 
 accuracy = 100.0 * correct / total
 print(f"Test Accuracy: {accuracy:.2f}%\n")
 
+print(f"Gradient Norm Mean: {np.mean(gradient_norms):.6f}")
+print(f"Gradient Norm Std: {np.std(gradient_norms):.6f}\n")
 
-import matplotlib.pyplot as plt
-
+# -----------------------------
+# 8. Visualization
+# -----------------------------
 plt.figure(figsize=(10, 4))
 
 plt.subplot(1, 2, 1)
@@ -197,6 +212,3 @@ plt.ylabel("Pressure")
 
 plt.tight_layout()
 plt.show()
-
-print(f"Gradient Norm Std: {np.std(gradient_norms):.6f}")
-print(f"Gradient Norm Mean: {np.mean(gradient_norms):.6f}\n")
